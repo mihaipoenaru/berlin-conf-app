@@ -16,7 +16,10 @@
 		class="fixed top-0 left-0 flex h-dvh w-dvw items-center justify-center bg-black/75"
 		onclick={() => (open = false)}
 	>
-		<div class="h-1/2 w-1/4 rounded-2xl bg-background p-5" onclick={(e) => e.stopPropagation()}>
+		<div
+			class="h-1/2 w-8/12 rounded-2xl bg-background p-5 lg:w-1/4"
+			onclick={(e) => e.stopPropagation()}
+		>
 			{@render children(close)}
 		</div>
 	</div>

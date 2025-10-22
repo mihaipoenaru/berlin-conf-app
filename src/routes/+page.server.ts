@@ -9,6 +9,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	if (!getConference(prevConference)) {
 		cookies.delete(confCacheKey, { path: '/' });
 		cleanup(prevConference, cookies);
+		return {};
 	}
 
 	return { prevConference };

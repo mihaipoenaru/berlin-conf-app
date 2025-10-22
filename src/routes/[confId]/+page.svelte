@@ -163,7 +163,7 @@
 			'w-full',
 			'rounded-full',
 			'aspect-square',
-			player && '[&>*]:hover:fill-secondary-foreground',
+			player && '*:hover:fill-secondary-foreground',
 			'transition',
 			'bg-blue-500 dark:bg-blue-900',
 			'stroke-foreground',
