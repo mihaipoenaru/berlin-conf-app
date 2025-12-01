@@ -16,7 +16,7 @@
 <svelte:boundary>
 	{@render children()}
 	{#snippet failed(error)}
-		{error}
+		{JSON.stringify(error)}
 	{/snippet}
 </svelte:boundary>
 
