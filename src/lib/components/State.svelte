@@ -1,28 +1,27 @@
 <script lang="ts">
 	import type { StateData, StateName } from '$lib/model/africa/states';
-	import { getConfContext, getClaimsContext } from '$lib/components/cards/StateCard.svelte';
-	import {
-		getConferenceForRoom,
-		getCurrentPlayer,
-		getPlayers,
-		toggleClaim
-	} from '$lib/remotes/conference.remote';
+	import { getConfContext } from '$lib/components/cards/StateCard.svelte';
+	import { getConferenceForRoom, toggleClaim } from '$lib/remotes/conference.remote';
+	import type { Player } from '$lib/server/players';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	const {
 		svgCoords,
 		name,
-		onHighlight
+		onHighlight,
+		claims,
+		players,
+		player
 	}: Pick<StateData, 'svgCoords' | 'name'> & {
 		onHighlight: (name: StateName) => void;
+		claims: Map<StateName, Set<string>>;
+		players: Set<Player>
+		player?: Player | null
 	} = $props();
 
 	const conf = getConfContext();
-	const claims = $derived(getClaimsContext());
 	const claimants: Set<string> = $derived(claims.get(name) ?? new Set());
-	const pP = $derived(getCurrentPlayer(conf()));
-	const plsP = $derived(getPlayers(conf()));
-	const player = $derived(await pP);
-	const players = $derived(await plsP);
 
 	const claimStatus: 'none' | 'singular' | 'multiple' = $derived.by(() => {
 		if (claimants.size === 0) return 'none';
@@ -51,11 +50,13 @@
 	async function onclick() {
 		if (!player) return;
 
-		await toggleClaim(name).updates(
+		const { kicked } = await toggleClaim(name).updates(
 			getConferenceForRoom(conf()).withOverride((current) =>
 				updateClaimant(current, name, player.name)
 			)
 		);
+
+		if (kicked) goto(resolve('/kicked'));
 	}
 
 	function getClaimantColor(claimant: string) {

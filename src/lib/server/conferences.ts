@@ -13,7 +13,7 @@ export function newConference(): [string, string] {
 	const hostToken = generateAlphanumeric(10);
 	const conf = new Map<StateName, Set<string>>();
 	conferences.set(conferenceId, conf);
-	hostTokens.set(hostToken, conferenceId);
+	hostTokens.set(conferenceId, hostToken);
 	players.set(conferenceId, new Set());
 	playerTokens.set(conferenceId, new Map());
 
@@ -30,8 +30,8 @@ export function deleteExHost(hostToken: string) {
 	hostTokens.delete(hostToken);
 }
 
-export function getHostConference(hostToken: string) {
-	return hostTokens.get(hostToken);
+export function getConferenceHost(confId: string) {
+	return hostTokens.get(confId);
 }
 
 export function cleanup(confId: string, cookies?: Cookies) {
@@ -52,4 +52,8 @@ export function purgeExpiredConferences() {
 		.timestampedEntries()
 		.filter(([, v]) => v.timestamp.diffNow('days').days > 7)
 		.forEach(([k]) => cleanup(k));
+}
+
+export function purgePlayerFromConference(cid: string, player: string) {
+	conferences.get(cid)?.forEach((set) => set.delete(player));
 }

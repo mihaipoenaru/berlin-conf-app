@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { DateTime } from 'luxon';
+import { z } from 'zod';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -46,3 +47,7 @@ export const hostTokenKey = 'hostToken';
 export const playerTokenKey = 'playerToken';
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const kickedSchema = z.object({
+	kicked: z.boolean().default(false)
+})

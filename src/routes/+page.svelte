@@ -5,22 +5,24 @@
 	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
 	import type { RemoteForm } from '@sveltejs/kit';
+	import { useSearchParams } from 'runed/kit';
+	import { kickedSchema } from '$lib/utils';
 
 	const { data }: PageProps = $props();
-
+	const params = useSearchParams(kickedSchema);
+	const kicked = $derived(params.kicked);
 	let loading = $state(false);
 
-	const toggleLoading: Parameters<RemoteForm<void, { confId: number }>['enhance']>[0] = async ({
-		submit
-	}) => {
-		loading = true;
-		try {
-			await submit();
-		} catch (e) {
-			console.error(e);
-			loading = false;
-		}
-	};
+	const toggleLoading: Parameters<RemoteForm<void, { confId: number }>['enhance']>[0] =
+		async ({ submit }) => {
+			loading = true;
+			try {
+				await submit();
+			} catch (e) {
+				console.error(e);
+				loading = false;
+			}
+		};
 </script>
 
 <section class="mx-auto max-w-7xl py-16 md:py-24">
@@ -49,7 +51,8 @@
 				<LoaderCircle class="animate-spin" />
 				Creating…
 			{:else}
-				Host a conference <HandshakeIcon />
+				Host a conference
+				<HandshakeIcon />
 			{/if}
 		</Button>
 	</form>
@@ -58,9 +61,16 @@
 			<div class="mx-auto mt-6 flex max-w-7xl flex-wrap items-center gap-4 md:mt-8 md:gap-5">
 				<div class="text-sm text-foreground/80">Or jump back into your previous room:</div>
 				<Button href={resolve(`/${data.prevConference}`)} variant="outline">
-					Resume <Undo />
+					Resume
+					<Undo />
 				</Button>
 			</div>
 		{/if}
 	</svelte:boundary>
 </section>
+
+{#if kicked}
+	<section class="mx-auto max-w-7xl py-16 md:py-24">
+		<p class="bg-destructive p-2 text-center rounded">You were kicked from your previous session</p>
+	</section>
+{/if}

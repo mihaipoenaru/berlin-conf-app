@@ -1,5 +1,11 @@
 import { command, form, getRequestEvent, query } from '$app/server';
-import { deleteExHost, getConference, newConference } from '$lib/server/conferences';
+import {
+	deleteExHost,
+	getConference,
+	getConferenceHost,
+	newConference,
+	purgePlayerFromConference
+} from '$lib/server/conferences';
 import { redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { resolve } from '$app/paths';
@@ -9,7 +15,9 @@ import {
 	addNewPlayer,
 	getPlayerByToken,
 	getPlayersForConference,
-	type Player
+	kickPlayerFromConference,
+	type Player,
+	playerIsKicked
 } from '$lib/server/players';
 
 const playerSchema = z.object({
@@ -30,18 +38,6 @@ export const hostNewConference = form(async () => {
 	redirect(303, `/${conferenceCode}`);
 });
 
-export const getConferenceForRoom = query(z.string(), async (cid: string) => {
-	const conference = getConference(cid);
-	if (!conference) redirect(300, resolve('/'));
-	return conference;
-});
-
-export const getPlayers = query(z.string(), async (cid: string) => {
-	const pl = getPlayersForConference(cid);
-	if (!pl) redirect(300, resolve('/'));
-	return pl;
-});
-
 export const addPlayer = form(playerSchema, async (p: Player, invalid) => {
 	const confId = confFromCookie();
 	const players = await getPlayers(confId);
@@ -51,6 +47,7 @@ export const addPlayer = form(playerSchema, async (p: Player, invalid) => {
 
 	if (colorTaken) issues.push(invalid.color('Color already taken'));
 	if (nameTaken) issues.push(invalid.name('Name already taken'));
+	// @ts-expect-error idk why this is wrong
 	if (issues.length > 0) return invalid(...issues);
 
 	const playerToken = addNewPlayer(confId, p);
@@ -63,12 +60,24 @@ export const getCurrentPlayer = query(z.string(), async (cid: string) => {
 	const playerToken = cookies.get(playerTokenKey);
 	if (!playerToken) return null;
 
-	return getPlayerByToken(cid, playerToken) ?? null;
+	if (playerIsKicked(cid, playerToken)) {
+		redirect(300, resolve('/kicked'));
+	}
+
+	const player = getPlayerByToken(cid, playerToken);
+	if (!player) return null;
+
+	return player;
 });
 
 export const toggleClaim = command(z.enum(states), async (state: StateName) => {
 	const confId = confFromCookie();
-	const player = await getCurrentPlayer(confId);
+	let player: Player | null;
+	try {
+		player = await getCurrentPlayer(confId);
+	} catch {
+		return { kicked: true };
+	}
 	if (!player) throw new Error('No player found');
 
 	const conference = await getConferenceForRoom(confId);
@@ -79,6 +88,45 @@ export const toggleClaim = command(z.enum(states), async (state: StateName) => {
 	} else {
 		claims.add(player.name);
 	}
+
+	return { kicked: false };
+});
+
+export const isHost = query(z.string(), async (cid: string) => {
+	const player = await getCurrentPlayer(cid);
+	const { cookies } = getRequestEvent();
+	const hostToken = cookies.get(hostTokenKey);
+
+	return !!player && getConferenceHost(cid) === hostToken;
+});
+
+export const getConferenceForRoom = query(z.string(), async (cid: string) => {
+	const conference = getConference(cid);
+	if (!conference) redirect(300, resolve('/'));
+
+	return conference;
+});
+
+export const getPlayers = query(z.string(), async (cid: string) => {
+	const pl = getPlayersForConference(cid);
+	if (!pl) redirect(300, resolve('/'));
+
+	return pl;
+});
+
+export const kickPlayer = command(z.string(), async (name: string) => {
+	const cid = confFromCookie();
+	const player = await getCurrentPlayer(cid);
+
+	if (!player) throw new Error('No player found');
+	if (!(await isHost(cid))) throw new Error('Not host');
+
+	const kickedPlayer = kickPlayerFromConference(cid, name);
+	if (!kickedPlayer) return;
+	purgePlayerFromConference(cid, kickedPlayer.name);
+
+	await getConferenceForRoom(cid).refresh();
+	await getPlayers(cid).refresh();
 });
 
 function confFromCookie() {

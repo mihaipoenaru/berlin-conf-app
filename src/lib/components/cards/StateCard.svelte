@@ -1,10 +1,6 @@
 <script module lang="ts">
 	import { createContext } from 'svelte';
 	import type { StateName } from '$lib/model/africa/states';
-	import type { SvelteMap } from 'svelte/reactivity';
-
-	export const [getClaimsContext, setClaimsContext] =
-		createContext<SvelteMap<StateName, Set<string>>>();
 
 	export const [getConfContext, setConfContext] = createContext<() => string>();
 </script>
@@ -14,11 +10,10 @@
 	import { getPlayers } from '$lib/remotes/conference.remote';
 	import PlayerHeading from '$lib/components/PlayerHeading.svelte';
 
-	const { state }: { state: StateData | null } = $props();
+	const { state, claims }: { state: StateData | null, claims: Map<StateName, Set<string>> } = $props();
 
 	const confId = getConfContext();
 
-	const claims = $derived(getClaimsContext());
 	const playersP = $derived(getPlayers(confId()));
 	const title = $derived(state?.formattedName ?? 'No state selected');
 	const claimants: Set<string> = $derived(

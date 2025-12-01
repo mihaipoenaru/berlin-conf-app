@@ -8,6 +8,7 @@ export type Player = {
 
 export const players = new Table<Set<Player>>();
 export const playerTokens = new Table<Map<string, Player>>();
+export const kickedPlayers = new Table<string>();
 
 export function addNewPlayer(confId: string, player: Player) {
 	const pl = getPlayersForConference(confId);
@@ -27,4 +28,23 @@ export function getPlayersForConference(confId: string) {
 
 export function getPlayerByToken(confId: string, token: string) {
 	return playerTokens.get(confId)?.get(token);
+}
+
+export function kickPlayerFromConference(confId: string, playerName: string) {
+	const confPlayers = playerTokens.get(confId);
+	if (!confPlayers) return null;
+
+	const [token, kickedPlayer] = confPlayers.entries().find(([, v]) => v.name === playerName) ?? [];
+	if (!kickedPlayer || !token) return null;
+
+	kickedPlayers.set(confId, token);
+	const playerSet = players.get(confId)!;
+	const toDelete = playerSet.values().find((p) => p.name === playerName)!;
+
+	playerSet.delete(toDelete);
+	return kickedPlayer;
+}
+
+export function playerIsKicked(confId: string, playerToken: string) {
+	return !!kickedPlayers.get(confId)?.includes(playerToken);
 }

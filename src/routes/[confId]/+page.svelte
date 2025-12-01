@@ -1,10 +1,5 @@
 <script lang="ts">
-	import {
-		groupedStates,
-		type StateData,
-		stateList,
-		type StateName
-	} from '$lib/model/africa/states';
+	import { groupedStates, type StateData, stateList } from '$lib/model/africa/states';
 	import State from '$lib/components/State.svelte';
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button/index';
@@ -13,24 +8,23 @@
 		addPlayer,
 		getConferenceForRoom,
 		getCurrentPlayer,
-		getPlayers
+		getPlayers,
+		isHost
 	} from '$lib/remotes/conference.remote';
-	import { SvelteMap } from 'svelte/reactivity';
-	import { watch } from 'runed';
-	import StateCard, {
-		setClaimsContext,
-		setConfContext
-	} from '$lib/components/cards/StateCard.svelte';
+	import StateCard, { setConfContext } from '$lib/components/cards/StateCard.svelte';
 	import { onMount } from 'svelte';
 	import { confCacheKey } from '$lib/utils';
 	import { type Player } from '$lib/server/players';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
+	// @ts-ignore
 	import * as Field from '$lib/components/ui/field/index';
 	import { Input } from '$lib/components/ui/input/index';
 	import Select from '$lib/components/ui/Select.svelte';
 	import PlayerHeading from '$lib/components/PlayerHeading.svelte';
 	import PlayerList from '$lib/components/PlayerList.svelte';
 	import ContestedStates from '$lib/components/ContestedStates.svelte';
+	import { groupBy } from '$lib/grouping-utils';
+	import PlayerClaimsCard from '$lib/components/PlayerClaimsCard.svelte';
 
 	const colorList = [
 		['#7B0E1D', 'Deep Red'],
@@ -56,18 +50,31 @@
 	const confId = $derived(page.params.confId)!;
 	let showPopover = $state(false);
 	let copyActivated = $state(false);
-	let claims = new SvelteMap<StateName, Set<string>>();
 
-	setClaimsContext(claims);
 	setConfContext(() => confId);
 
 	const scP = $derived(getConferenceForRoom(confId));
 	const plsP = $derived(getPlayers(confId));
 	const plP = $derived(getCurrentPlayer(confId));
+	const ihP = $derived(isHost(confId));
 
 	const conferenceClaims = $derived(await scP);
 	const players = $derived(await plsP);
+
 	const player: Player | null = $derived(await plP);
+	const currentPlayerIsHost = $derived(await ihP);
+
+	const playerClaims = $derived.by(() => {
+		const playerClaimList = conferenceClaims.entries().flatMap(([state, playerNames]) => playerNames.entries().map(([pName]) => ({
+			state,
+			pName
+		}))).toArray();
+
+		return groupBy(playerClaimList, 'pName').entries().map(([pName, claims]) => ({
+			player: players.values().find((p) => p.name === pName),
+			claims: claims.map(({ state }) => state)
+		})).filter(c => !!c.player).toArray();
+	});
 
 	let activeState: StateData | null = $state(null);
 	const takenColors = $derived(new Set(players.values().map((p) => p.color)));
@@ -99,20 +106,10 @@
 
 		return () => {
 			clearInterval(iid);
-			document.removeEventListener('visibilitychange', () => {});
+			document.removeEventListener('visibilitychange', () => {
+			});
 		};
 	});
-
-	$effect(() => {
-		conferenceClaims.forEach((value, key) => claims.set(key, new Set(value)));
-	});
-
-	watch(
-		() => conferenceClaims,
-		() => {
-			conferenceClaims.forEach((value, key) => claims.set(key, new Set(value)));
-		}
-	);
 
 	function restartRefresh() {
 		clearInterval(iid);
@@ -134,7 +131,7 @@
 
 <PlayerList {players} />
 
-<h1 class="flex items-center justify-center gap-2 text-center text-3xl font-bold">
+<h1 class="flex items-center justify-center gap-2 text-center text-3xl font-bold mt-6">
 	Room code: {confId}
 
 	<Button variant="outline" size="icon" onclick={onCopy} class={[copyActivated && 'scale-120']}>
@@ -151,7 +148,7 @@
 		<div>No country selected</div>
 		<Button onclick={() => (openDialog = true)}>Select a country</Button>
 	{:else}
-		<PlayerHeading {player} />
+		<PlayerHeading {player} playerIsHost={currentPlayerIsHost} />
 	{/if}
 </h2>
 
@@ -173,11 +170,17 @@
 		]}
 	>
 		{#each stateList as state}
-			<State {...state} onHighlight={(name) => (activeState = groupedStates.get(name)!)} />
+			<State {...state} onHighlight={(name) => (activeState = groupedStates.get(name)!)} claims={conferenceClaims}
+						 {players} {player} />
 		{/each}
 	</svg>
-	<StateCard state={activeState} />
-	<ContestedStates claims={conferenceClaims}/>
+	<StateCard state={activeState} claims={conferenceClaims} />
+	<ContestedStates claims={conferenceClaims} />
+	<div class="col-span-full flex flex-wrap gap-3">
+		{#each playerClaims as pClaim}
+			<PlayerClaimsCard claims={pClaim} canKick={currentPlayerIsHost} currentPlayer={player} />
+		{/each}
+	</div>
 </div>
 
 <Dialog bind:open={openDialog}>
