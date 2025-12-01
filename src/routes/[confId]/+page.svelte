@@ -153,10 +153,17 @@
 </h2>
 
 <div class="mt-10 grid grid-cols-1 gap-x-10 gap-y-15 p-15 md:grid-cols-3 xl:grid-cols-2">
-	<svg
-		id="africa-map"
-		viewBox="475 255 400 90"
-		class={[
+	<div class="rounded-full relative">
+		{#if !player}
+			<div
+				class="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center size-full bg-black/90 rounded-full text-white">
+				You must choose a country before you can interact with the map.
+			</div>
+		{/if}
+		<svg
+			id="africa-map"
+			viewBox="475 255 400 90"
+			class={[
 			'w-full',
 			'rounded-full',
 			'aspect-square',
@@ -168,12 +175,13 @@
 			'md:col-span-2',
 			'xl:col-span-1'
 		]}
-	>
-		{#each stateList as state}
-			<State {...state} onHighlight={(name) => (activeState = groupedStates.get(name)!)} claims={conferenceClaims}
-						 {players} {player} />
-		{/each}
-	</svg>
+		>
+			{#each stateList as state}
+				<State {...state} onHighlight={(name) => (activeState = groupedStates.get(name)!)} claims={conferenceClaims}
+							 {players} {player} />
+			{/each}
+		</svg>
+	</div>
 	<StateCard state={activeState} claims={conferenceClaims} />
 	<ContestedStates claims={conferenceClaims} />
 	<div class="col-span-full flex flex-wrap gap-3">
