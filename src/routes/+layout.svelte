@@ -15,9 +15,6 @@
 <ModeWatcher />
 <svelte:boundary>
 	{@render children()}
-	{#snippet failed(error)}
-		{JSON.stringify(error)}
-	{/snippet}
 </svelte:boundary>
 
 <Button onclick={toggleMode} variant="outline" size="icon" class="fixed top-3 right-3">
